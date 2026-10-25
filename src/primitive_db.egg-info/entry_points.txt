@@ -1,0 +1,2 @@
+[console_scripts]
+project = primitive_db.main:main

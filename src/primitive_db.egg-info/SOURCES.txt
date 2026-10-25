@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+src/primitive_db/__init__.py
+src/primitive_db/engine.py
+src/primitive_db/main.py
+src/primitive_db.egg-info/PKG-INFO
+src/primitive_db.egg-info/SOURCES.txt
+src/primitive_db.egg-info/dependency_links.txt
+src/primitive_db.egg-info/entry_points.txt
+src/primitive_db.egg-info/requires.txt
+src/primitive_db.egg-info/top_level.txt
