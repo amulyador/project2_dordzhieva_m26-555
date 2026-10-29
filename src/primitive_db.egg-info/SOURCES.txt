@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 src/primitive_db/__init__.py
 src/primitive_db/core.py
+src/primitive_db/decorators.py
 src/primitive_db/engine.py
 src/primitive_db/main.py
 src/primitive_db/utils.py
