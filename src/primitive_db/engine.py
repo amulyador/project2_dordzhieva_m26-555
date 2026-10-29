@@ -3,7 +3,9 @@ import shlex
 from prettytable import PrettyTable
 
 from primitive_db import core, utils
+from primitive_db.constants import META_FILE
 from primitive_db.decorators import create_cacher
+from primitive_db.parser import parse_condition
 
 
 def print_help() -> None:
@@ -20,37 +22,10 @@ def print_help() -> None:
     print("<command> exit - выход")
     print("<command> help - справка\n")
 
-def parse_condition(args: list, schema: list) -> dict:
-    """Превращает ['age', '=', '28'] в {'age': 28}. Поддерживает несколько условий."""
-    # Убираем слово 'and', если пользователь его ввел
-    args = [arg for arg in args if arg.lower() != "and"]
-    
-    if len(args) == 0 or len(args) % 3 != 0:
-        raise ValueError("Неверный формат. Используйте: <столбец> = <значение> [and <столбец> = <значение>]")
-    
-    conditions = {}
-    for i in range(0, len(args), 3):
-        col_name, operator, val_str = args[i:i+3]
-        if operator != "=":
-            raise ValueError("Неверный оператор. Используйте '='")
-            
-        col_type = next((c["type"] for c in schema if c["name"] == col_name), "str")
-        
-        if col_type == "int":
-            val = int(val_str)
-        elif col_type == "bool":
-            val = val_str.lower() in ["true", "1", "yes"]
-        else:
-            val = val_str
-            
-        conditions[col_name] = val
-        
-    return conditions
-
 def run() -> None:
     """Главный цикл программы."""
     print("***База данных***")
-    metadata = utils.load_metadata()
+    metadata = utils.load_metadata(META_FILE)
 
     # Создаем кэш для команды select
     cache_select = create_cacher()
@@ -61,7 +36,6 @@ def run() -> None:
             if not user_input:
                 continue
 
-            # Используем shlex для правильного разбора кавычек
             args = shlex.split(user_input)
             command = args[0]
 
@@ -87,17 +61,16 @@ def run() -> None:
                     columns.append({"name": name, "type": col_type})
                 
                 metadata = core.create_table(metadata, table_name, columns)
-                utils.save_metadata(utils.METADATA_FILE, metadata)
+                utils.save_metadata(META_FILE, metadata)
                 cache_select.cache.clear()
                 print(f"Таблица '{table_name}' успешно создана.")
 
             elif command == "drop_table":
                 table_name = args[1]
-                # Проверяем, подтвердил ли пользователь удаление
                 new_metadata = core.drop_table(metadata, table_name)
-                if new_metadata is not metadata:
+                if new_metadata is not None:  # <--- ИЗМЕНЕНИЕ
                     metadata = new_metadata
-                    utils.save_metadata(utils.METADATA_FILE, metadata)
+                    utils.save_metadata(META_FILE, metadata)
                     utils.delete_table_data(table_name)
                     cache_select.cache.clear()
                     print(f"Таблица '{table_name}' успешно удалена.")
@@ -139,7 +112,9 @@ def run() -> None:
                 table_data = utils.load_table_data(table_name)
                 
                 query_key = f"{table_name}_{str(where_clause)}"
-                result = cache_select(query_key, lambda: core.select(table_data, where_clause))  # noqa: E501
+                result = cache_select(
+                    query_key, lambda: core.select(table_data, where_clause)
+                )
                 
                 if not result:
                     print("Данных нет.")
@@ -147,7 +122,9 @@ def run() -> None:
                     pt = PrettyTable()
                     pt.field_names = [col["name"] for col in metadata[table_name]]
                     for row in result:
-                        pt.add_row([row.get(col["name"], "") for col in metadata[table_name]])  # noqa: E501
+                        pt.add_row(
+                            [row.get(col["name"], "") for col in metadata[table_name]]
+                        )
                     print(pt)
 
             elif command == "update":
@@ -158,8 +135,12 @@ def run() -> None:
                 set_idx = args.index("set")
                 where_idx = args.index("where")
                 
-                set_clause = parse_condition(args[set_idx+1:where_idx], metadata[table_name])  # noqa: E501
-                where_clause = parse_condition(args[where_idx+1:], metadata[table_name])
+                set_clause = parse_condition(
+                    args[set_idx+1:where_idx], metadata[table_name]
+                )
+                where_clause = parse_condition(
+                    args[where_idx+1:], metadata[table_name]
+                )
                 
                 table_data = utils.load_table_data(table_name)
                 table_data = core.update(table_data, set_clause, where_clause)
@@ -173,12 +154,14 @@ def run() -> None:
                     raise ValueError(f"Таблицы '{table_name}' не существует.")
                 
                 where_idx = args.index("where")
-                where_clause = parse_condition(args[where_idx+1:], metadata[table_name])
+                where_clause = parse_condition(
+                    args[where_idx+1:], metadata[table_name]
+                )
                 
                 table_data = utils.load_table_data(table_name)
-                
                 new_table_data = core.delete(table_data, where_clause)
-                if new_table_data is not table_data:
+                
+                if new_table_data is not None:  # <--- ИЗМЕНЕНИЕ
                     utils.save_table_data(table_name, new_table_data)
                     cache_select.cache.clear()
                     print("Записи удалены.")

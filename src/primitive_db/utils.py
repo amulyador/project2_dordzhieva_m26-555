@@ -1,10 +1,10 @@
 import json
 import os
 
-METADATA_FILE = "db_meta.json"
-DATA_DIR = "data"
+from primitive_db.constants import DATA_DIR, META_FILE
 
-def load_metadata(filepath: str = METADATA_FILE) -> dict:
+
+def load_metadata(filepath: str = META_FILE) -> dict:
     """Загружает метаданные из JSON. Если файла нет - возвращает пустой словарь."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:

@@ -24,7 +24,7 @@ def confirm_action(action_name):
                 return func(*args, **kwargs)
             else:
                 print("Операция отменена.")
-                return args[0] if args else None
+                return None  # <--- ИЗМЕНЕНИЕ: возвращаем None при отказе
         return wrapper
     return decorator
 
