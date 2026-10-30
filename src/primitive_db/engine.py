@@ -10,17 +10,19 @@ from primitive_db.parser import parse_condition
 
 def print_help() -> None:
     """Выводит справку по командам."""
-    print("\n***Процесс работы с таблицей***")
+    print("\n***Операции с данными***")
     print("Функции:")
+    print("<command> insert into <имя_таблицы> values (<значение1>, <значение2>, ...) - создать запись.")  # noqa: E501
+    print("<command> select from <имя_таблицы> where <столбец> = <значение> - прочитать записи по условию.")  # noqa: E501
+    print("<command> select from <имя_таблицы> - прочитать все записи.")
+    print("<command> update <имя_таблицы> set <столбец1> = <новое_значение1> where <столбец_условия> = <значение_условия> - обновить запись.")  # noqa: E501
+    print("<command> delete from <имя_таблицы> where <столбец> = <значение> - удалить запись.")  # noqa: E501
+    print("<command> info <имя_таблицы> - вывести информацию о таблице.")
     print("<command> create_table <имя_таблицы> <столбец1:тип> .. - создать таблицу")
     print("<command> list_tables - показать список всех таблиц")
     print("<command> drop_table <имя_таблицы> - удалить таблицу")
-    print("<command> insert <имя_таблицы> <значение1> <значение2> .. - добавить запись")
-    print("<command> select <имя_таблицы> [where <столбец> = <значение>] - выбрать")
-    print("<command> update <имя_таблицы> set <столбец> = <значение> where <условие>")
-    print("<command> delete <имя_таблицы> where <столбец> = <значение>")
-    print("<command> exit - выход")
-    print("<command> help - справка\n")
+    print("<command> exit - выход из программы")
+    print("<command> help - справочная информация\n")
 
 def run() -> None:
     """Главный цикл программы."""
@@ -68,20 +70,34 @@ def run() -> None:
             elif command == "drop_table":
                 table_name = args[1]
                 new_metadata = core.drop_table(metadata, table_name)
-                if new_metadata is not None:  # <--- ИЗМЕНЕНИЕ
+                if new_metadata is not None:
                     metadata = new_metadata
                     utils.save_metadata(META_FILE, metadata)
                     utils.delete_table_data(table_name)
                     cache_select.cache.clear()
                     print(f"Таблица '{table_name}' успешно удалена.")
 
-            elif command == "insert":
+            elif command == "info":
                 table_name = args[1]
+                table_data = utils.load_table_data(table_name)
+                core.info_table(metadata, table_name, table_data)
+
+            # --- ОБНОВЛЕННЫЕ CRUD КОМАНДЫ ---
+            
+            elif command == "insert" and len(args) > 1 and args[1] == "into":
+                # Синтаксис: insert into users values ("Sergei", 28, true)
+                table_name = args[2]
                 if table_name not in metadata:
                     raise ValueError(f"Таблицы '{table_name}' не существует.")
                 
                 schema = metadata[table_name]
-                raw_values = args[2:] 
+                
+                # Находим индексы скобок и извлекаем значения
+                values_str = " ".join(args[4:]) # Пропускаем insert into users values
+                values_str = values_str.strip("()")
+                
+                # Разделяем по запятой и очищаем от кавычек и пробелов
+                raw_values = [v.strip().strip("'\"") for v in values_str.split(",")]
                 
                 parsed_vals = []
                 for i, val in enumerate(raw_values):
@@ -97,10 +113,11 @@ def run() -> None:
                 table_data = core.insert(table_data, schema, parsed_vals)
                 utils.save_table_data(table_name, table_data)
                 cache_select.cache.clear()
-                print("Запись добавлена.")
+                print(f"Запись с ID={table_data[-1]['ID']} успешно добавлена в таблицу '{table_name}'.")  # noqa: E501
 
-            elif command == "select":
-                table_name = args[1]
+            elif command == "select" and len(args) > 1 and args[1] == "from":
+                # Синтаксис: select from users where age = 28
+                table_name = args[2]
                 if table_name not in metadata:
                     raise ValueError(f"Таблицы '{table_name}' не существует.")
                 
@@ -128,6 +145,7 @@ def run() -> None:
                     print(pt)
 
             elif command == "update":
+                # Синтаксис: update users set age = 29 where name = "Sergei"
                 table_name = args[1]
                 if table_name not in metadata:
                     raise ValueError(f"Таблицы '{table_name}' не существует.")
@@ -146,10 +164,11 @@ def run() -> None:
                 table_data = core.update(table_data, set_clause, where_clause)
                 utils.save_table_data(table_name, table_data)
                 cache_select.cache.clear()
-                print("Записи обновлены.")
+                print(f"Записи в таблице '{table_name}' успешно обновлены.")
 
-            elif command == "delete":
-                table_name = args[1]
+            elif command == "delete" and len(args) > 1 and args[1] == "from":
+                # Синтаксис: delete from users where ID = 1
+                table_name = args[2]
                 if table_name not in metadata:
                     raise ValueError(f"Таблицы '{table_name}' не существует.")
                 
@@ -161,17 +180,17 @@ def run() -> None:
                 table_data = utils.load_table_data(table_name)
                 new_table_data = core.delete(table_data, where_clause)
                 
-                if new_table_data is not None:  # <--- ИЗМЕНЕНИЕ
+                if new_table_data is not None:
                     utils.save_table_data(table_name, new_table_data)
                     cache_select.cache.clear()
-                    print("Записи удалены.")
+                    print(f"Записи из таблицы '{table_name}' успешно удалены.")
 
             else:
                 print(f"Функции <{command}> нет. Попробуйте снова.")
 
         except ValueError as e:
-            print(f"Неверное значение: {e}. Попробуйте снова.")
+            print(f"Некорректное значение: {e}. Попробуйте снова.")
         except IndexError:
-            print("Неверное значение: недостаточно аргументов. Попробуйте снова.")
+            print("Некорректное значение: недостаточно аргументов. Попробуйте снова.")
         except Exception as e:
             print(f"Ошибка: {e}")

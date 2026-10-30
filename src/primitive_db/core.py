@@ -91,3 +91,14 @@ def delete(table_data: list, where_clause: dict) -> list:
         if not match:
             result.append(row)
     return result
+
+def info_table(metadata: dict, table_name: str, table_data: list) -> None:
+    """Выводит информацию о таблице."""
+    if table_name not in metadata:
+        raise ValueError(f"Таблицы '{table_name}' не существует.")
+    
+    schema = metadata[table_name]
+    cols = ", ".join(f"{c['name']}:{c['type']}" for c in schema)
+    print(f"Таблица: {table_name}")
+    print(f"Столбцы: {cols}")
+    print(f"Количество записей: {len(table_data)}")

@@ -9,7 +9,7 @@ def handle_db_errors(func):
         try:
             return func(*args, **kwargs)
         except (KeyError, ValueError, FileNotFoundError) as e:
-            print(f"Ошибка базы данных: {e}")
+            print(f"Ошибка: {e}")
             # Возвращаем первый аргумент, чтобы не сломать программу
             return args[0] if args else None
     return wrapper
