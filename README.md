@@ -1,5 +1,3 @@
-```markdown
-```
 # Primitive DB
 
 Простая консольная база данных на Python.
