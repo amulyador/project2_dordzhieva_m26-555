@@ -1,3 +1,4 @@
+from primitive_db.constants import VALID_TYPES
 from primitive_db.decorators import confirm_action, handle_db_errors, log_time
 
 
@@ -17,9 +18,8 @@ def create_table(metadata: dict, table_name: str, columns: list) -> dict:
     """Создает таблицу, добавляя ID в начало."""
     if table_name in metadata:
         raise ValueError(f"Таблица '{table_name}' уже существует.")
-
     for col in columns:
-        if col["type"] not in ["int", "str", "bool"]:
+        if col["type"] not in VALID_TYPES:
             raise ValueError(f"Неподдерживаемый тип данных: {col['type']}")
 
     if not any(col["name"] == "ID" for col in columns):
